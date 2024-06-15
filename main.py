@@ -206,7 +206,7 @@ class Converter:
 
     def __convert_atlassian_html(self, soup):
         """
-        Convert Atlassian-specific HTML tags to standard HTML tags and 
+        Convert Atlassian-specific HTML tags to standard HTML tags and
         convert video links to Markdown format with ![type:video](url).
         """
         for image in soup.find_all("ac:image"):
@@ -282,7 +282,7 @@ if __name__ == "__main__":
                         default=False, help="This option only runs the markdown conversion")
     parser.add_argument("--remove-html", action="store_true", dest="remove_html", required=False,
                         default=False, help="Remove HTML files after conversion")
-    parser.add_argument("--removable-parents", type=str, nargs="*", default=[], 
+    parser.add_argument("--removable-parents", type=str, nargs="*", default=[],
                         help="List of parent titles to be removed from the path")
 
     args = parser.parse_args()

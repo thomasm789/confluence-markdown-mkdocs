@@ -57,12 +57,16 @@ class Exporter:
         if src_id in self.__seen:
             raise ExportException("Duplicate Page ID Found!")
 
-        page = self.__confluence.get_page_by_id(src_id, expand="body.storage")
+        page = self.__confluence.get_page_by_id(src_id, expand="body.storage,version")
         page_title = page["title"]
         page_id = page["id"]
 
         child_ids = self.__confluence.get_child_id_list(page_id)
         content = page["body"]["storage"]["value"]
+        last_updated = page["version"]["when"]
+
+        # Add last updated timestamp to the content
+        content += f'<div>Last updated: {last_updated}</div>'
 
         extension = ".html"
         document_name = "index" if child_ids else page_title
@@ -114,8 +118,12 @@ class Exporter:
 
             mime_type = attachment["metadata"]["mediaType"]
             if mime_type.startswith("image/"):
-                logging.info("Saving image attachment %s to %s", att_title, att_filename)
-                self.__download_attachment(att_url, att_filename)
+                logging.info("Checking for existing image attachment %s", att_filename)
+                if os.path.exists(att_filename):
+                    logging.info("Attachment %s already exists. Skipping download.", att_filename)
+                else:
+                    logging.info("Saving image attachment %s to %s", att_title, att_filename)
+                    self.__download_attachment(att_url, att_filename)
             else:
                 logging.info("Adding link to non-image attachment %s", att_title)
                 self.__add_attachment_link(page_filename, att_title, att_url)
@@ -198,7 +206,8 @@ class Converter:
 
     def __convert_atlassian_html(self, soup):
         """
-        Convert Atlassian-specific HTML tags to standard HTML tags.
+        Convert Atlassian-specific HTML tags to standard HTML tags and 
+        convert video links to Markdown format with ![type:video](url).
         """
         for image in soup.find_all("ac:image"):
             url = None
@@ -221,6 +230,13 @@ class Converter:
                 attachment_tag = soup.new_tag("a", href=os.path.join(ATTACHMENT_FOLDER_NAME, att_filename))
                 attachment_tag.string = att_filename
                 attachment.replace_with(attachment_tag)
+
+        # Convert video links
+        for link in soup.find_all("a"):
+            href = link.get("href", "")
+            if any(href.endswith(ext) for ext in [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".m4v", ".webm"]):
+                video_tag = soup.new_tag("img", attrs={"src": href, "alt": "type:video"})
+                link.replace_with(video_tag)
 
         return soup
 
@@ -266,7 +282,7 @@ if __name__ == "__main__":
                         default=False, help="This option only runs the markdown conversion")
     parser.add_argument("--remove-html", action="store_true", dest="remove_html", required=False,
                         default=False, help="Remove HTML files after conversion")
-    parser.add_argument("--removable-parents", type=str, nargs="*", default=[],
+    parser.add_argument("--removable-parents", type=str, nargs="*", default=[], 
                         help="List of parent titles to be removed from the path")
 
     args = parser.parse_args()

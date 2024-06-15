@@ -235,8 +235,9 @@ class Converter:
         for link in soup.find_all("a"):
             href = link.get("href", "")
             if any(href.endswith(ext) for ext in [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".m4v", ".webm"]):
-                video_tag = soup.new_tag("img", attrs={"src": href, "alt": "type:video"})
-                link.replace_with(video_tag)
+                video_md = f'![type:video]({href})'
+                new_tag = soup.new_string(video_md)
+                link.replace_with(new_tag)
 
         return soup
 

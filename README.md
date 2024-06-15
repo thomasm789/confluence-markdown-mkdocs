@@ -27,7 +27,7 @@ pip install requests beautifulsoup4 markdownify atlassian-python-api
 ## Usage
 
 ```sh
-python3 confluence-markdown-export.py <url> <username> <token> <out_dir> [--space <space>] [--skip-attachments] [--no-fetch] [--remove-html] [--removable-parents <parents>...]
+python3 main.py <url> <username> <token> <out_dir> [--space <space>] [--skip-attachments] [--no-fetch] [--remove-html] [--removable-parents <parents>...]
 ```
 
 ### Arguments
@@ -50,19 +50,19 @@ python3 confluence-markdown-export.py <url> <username> <token> <out_dir> [--spac
 #### Export a specific space and convert to Markdown
 
 ```sh
-python3 confluence-markdown-export.py https://your-confluence-instance.atlassian.net username token docs --space YOURSPACE --remove-html
+python3 main.py https://your-confluence-instance.atlassian.net username token docs --space YOURSPACE --remove-html
 ```
 
 #### Export all spaces and skip attachments
 
 ```sh
-python3 confluence-markdown-export.py https://your-confluence-instance.atlassian.net username token docs --skip-attachments
+python3 main.py https://your-confluence-instance.atlassian.net username token docs --skip-attachments
 ```
 
 #### Export and remove specific parent directories from the path
 
 ```sh
-python3 confluence-markdown-export.py https://your-confluence-instance.atlassian.net username token docs --space YOURSPACE --removable-parents "Welcome!" "Another Parent"
+python3 main.py https://your-confluence-instance.atlassian.net username token docs --space YOURSPACE --removable-parents "Welcome!" "Another Parent"
 ```
 
 ## License

@@ -206,8 +206,8 @@ class Converter:
 
     def __convert_atlassian_html(self, soup):
         """
-        Convert Atlassian-specific HTML tags to standard HTML tags and
-        convert video links to Markdown format with ![type:video](url).
+        Convert Atlassian-specific HTML tags to standard HTML tags and 
+        convert video links to HTML video embed format.
         """
         for image in soup.find_all("ac:image"):
             url = None
@@ -232,12 +232,14 @@ class Converter:
                 attachment.replace_with(attachment_tag)
 
         # Convert video links
+        video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".m4v", ".webm"]
         for link in soup.find_all("a"):
             href = link.get("href", "")
-            if any(href.endswith(ext) for ext in [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".m4v", ".webm"]):
-                video_md = f'![type:video]({href})'
-                new_tag = soup.new_string(video_md)
-                link.replace_with(new_tag)
+            if any(ext in href for ext in video_extensions):
+                video_tag = soup.new_tag("video", controls=True)
+                source_tag = soup.new_tag("source", src=href, type="video/mp4")
+                video_tag.append(source_tag)
+                link.replace_with(video_tag)
 
         return soup
 
@@ -283,7 +285,7 @@ if __name__ == "__main__":
                         default=False, help="This option only runs the markdown conversion")
     parser.add_argument("--remove-html", action="store_true", dest="remove_html", required=False,
                         default=False, help="Remove HTML files after conversion")
-    parser.add_argument("--removable-parents", type=str, nargs="*", default=[],
+    parser.add_argument("--removable-parents", type=str, nargs="*", default=[], 
                         help="List of parent titles to be removed from the path")
 
     args = parser.parse_args()

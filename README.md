@@ -4,10 +4,15 @@ This project provides a tool to export Confluence pages (including attachments) 
 
 ## Features
 
-- Export Confluence pages and their attachments.
-- Convert exported HTML pages to Markdown format.
-- Optionally remove HTML files after conversion.
-- Skip specified parent directories in the path structure.
+- **Export Confluence Pages:** Export pages from a specific space or all spaces.
+- **Directory and File Handling:** Automatically creates the output directory, sanitizes filenames, and allows removal of specified parent directories from the path.
+- **Attachment Handling:** Downloads image attachments, skips already existing attachments, and links non-image attachments to their original location.
+- **HTML to Markdown Conversion:** Converts exported HTML pages to Markdown format.
+- **Special Content Handling:**
+  - Appends the last updated timestamp of each page to the bottom.
+  - Converts video file links to the format `![type:video](url)`.
+- **Command-Line Interface:** Customizable behavior with various arguments.
+- **Detailed Logging:** Provides detailed logging throughout the process.
 
 ## Requirements
 

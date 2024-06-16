@@ -187,6 +187,23 @@ class Exporter:
                 self.__dump_space(space)
 
 
+class CustomMarkdownConverter(MarkdownConverter):
+    def convert_video(self, el, text, convert_as_inline):
+        """
+        Custom conversion for video tags to retain HTML structure in Markdown.
+        """
+        if el.name == 'video':
+            sources = el.find_all('source')
+            video_md = '<video controls>'
+            for source in sources:
+                src = source.get('src')
+                type_ = source.get('type')
+                video_md += f'<source src="{src}" type="{type_}">'
+            video_md += '</video>'
+            return video_md
+        return super().convert_tag(el, text, convert_as_inline)
+
+
 class Converter:
     def __init__(self, out_dir, remove_html):
         self.__out_dir = out_dir
@@ -206,7 +223,7 @@ class Converter:
 
     def __convert_atlassian_html(self, soup):
         """
-        Convert Atlassian-specific HTML tags to standard HTML tags and 
+        Convert Atlassian-specific HTML tags to standard HTML tags and
         convert video links to HTML video embed format.
         """
         for image in soup.find_all("ac:image"):
@@ -261,7 +278,7 @@ class Converter:
             soup_raw = bs4.BeautifulSoup(data, 'html.parser')
             soup = self.__convert_atlassian_html(soup_raw)
 
-            md = MarkdownConverter().convert_soup(soup)
+            md = CustomMarkdownConverter().convert_soup(soup)
             newname = os.path.splitext(path)[0]
             with open(newname + ".md", "w", encoding="utf-8") as f:
                 f.write(md)
@@ -285,7 +302,7 @@ if __name__ == "__main__":
                         default=False, help="This option only runs the markdown conversion")
     parser.add_argument("--remove-html", action="store_true", dest="remove_html", required=False,
                         default=False, help="Remove HTML files after conversion")
-    parser.add_argument("--removable-parents", type=str, nargs="*", default=[], 
+    parser.add_argument("--removable-parents", type=str, nargs="*", default=[],
                         help="List of parent titles to be removed from the path")
 
     args = parser.parse_args()

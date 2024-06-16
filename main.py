@@ -231,23 +231,23 @@ class Converter:
             for child in image.children:
                 url = child.get("ri:filename", None)
                 break
-
+    
             if url is None:
                 continue
-
+    
             srcurl = os.path.join(ATTACHMENT_FOLDER_NAME, url)
             imgtag = soup.new_tag("img", attrs={"src": srcurl, "alt": srcurl})
-
+    
             image.insert_after(soup.new_tag("br"))
             image.replace_with(imgtag)
-
+    
         for attachment in soup.find_all("ac:link"):
             if attachment.get("ac:link-type") == "attachment":
                 att_filename = attachment.get("ri:filename")
                 attachment_tag = soup.new_tag("a", href=os.path.join(ATTACHMENT_FOLDER_NAME, att_filename))
                 attachment_tag.string = att_filename
                 attachment.replace_with(attachment_tag)
-
+    
         # Convert video links
         video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".m4v", ".webm"]
         for link in soup.find_all("a"):
@@ -256,9 +256,10 @@ class Converter:
                 video_tag = soup.new_tag("video", controls=True)
                 source_tag = soup.new_tag("source", src=href, type="video/mp4")
                 video_tag.append(source_tag)
-                link.replace_with(video_tag)
-
+                link.replace_with(video_tag)  # This replaces the existing link with the video tag
+    
         return soup
+
 
     def convert(self):
         """

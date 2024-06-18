@@ -205,9 +205,10 @@ class CustomMarkdownConverter(MarkdownConverter):
 
 
 class Converter:
-    def __init__(self, out_dir, remove_html):
+    def __init__(self, out_dir, remove_html, base_url):
         self.__out_dir = out_dir
         self.__remove_html = remove_html
+        self.__base_url = base_url
 
     def recurse_findfiles(self, path):
         """
@@ -226,40 +227,32 @@ class Converter:
         Convert Atlassian-specific HTML tags to standard HTML tags and
         convert video links to HTML video embed format.
         """
+        base_url_parsed = urlparse(self.__base_url)
+
         for image in soup.find_all("ac:image"):
-            url = None
-            for child in image.children:
-                url = child.get("ri:filename", None)
-                break
-    
-            if url is None:
-                continue
-    
-            srcurl = os.path.join(ATTACHMENT_FOLDER_NAME, url)
-            imgtag = soup.new_tag("img", attrs={"src": srcurl, "alt": srcurl})
-    
-            image.insert_after(soup.new_tag("br"))
-            image.replace_with(imgtag)
-    
+            attachment = image.find("ri:attachment")
+            if attachment:
+                filename = attachment.get("ri:filename")
+                if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                    srcurl = os.path.join(ATTACHMENT_FOLDER_NAME, filename)
+                    imgtag = soup.new_tag("img", attrs={"src": srcurl, "alt": filename})
+                    image.replace_with(imgtag)
+                else:
+                    download_path = f"/wiki/download/attachments/{attachment.get('ri:attachment-id')}/{filename}"
+                    full_url = urlunparse((base_url_parsed.scheme, base_url_parsed.netloc, download_path, None, None, None))
+                    video_tag = soup.new_tag("video", controls=True)
+                    source_tag = soup.new_tag("source", src=full_url, type="video/mp4")
+                    video_tag.append(source_tag)
+                    image.replace_with(video_tag)
+
         for attachment in soup.find_all("ac:link"):
             if attachment.get("ac:link-type") == "attachment":
                 att_filename = attachment.get("ri:filename")
                 attachment_tag = soup.new_tag("a", href=os.path.join(ATTACHMENT_FOLDER_NAME, att_filename))
                 attachment_tag.string = att_filename
                 attachment.replace_with(attachment_tag)
-    
-        # Convert video links
-        video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".m4v", ".webm"]
-        for link in soup.find_all("a"):
-            href = link.get("href", "")
-            if any(ext in href for ext in video_extensions):
-                video_tag = soup.new_tag("video", controls=True)
-                source_tag = soup.new_tag("source", src=href, type="video/mp4")
-                video_tag.append(source_tag)
-                link.replace_with(video_tag)  # This replaces the existing link with the video tag
-    
-        return soup
 
+        return soup
 
     def convert(self):
         """
@@ -279,7 +272,13 @@ class Converter:
             soup_raw = bs4.BeautifulSoup(data, 'html.parser')
             soup = self.__convert_atlassian_html(soup_raw)
 
-            md = CustomMarkdownConverter().convert_soup(soup)
+            # Convert the soup object back to HTML
+            converted_html = str(soup)
+
+            # Replace Markdown-style video links with HTML video tags
+            converted_html = self.__replace_markdown_video_links(converted_html)
+
+            md = CustomMarkdownConverter().convert(converted_html)
             newname = os.path.splitext(path)[0]
             with open(newname + ".md", "w", encoding="utf-8") as f:
                 f.write(md)
@@ -287,6 +286,34 @@ class Converter:
             if self.__remove_html:
                 os.remove(path)
                 logging.info("Removed HTML file %s", path)
+
+    def __replace_markdown_video_links(self, html_content):
+        """
+        Replace Markdown-style video links with HTML video tags in the given HTML content.
+        """
+        video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv", ".m4v", ".webm"]
+        soup = bs4.BeautifulSoup(html_content, 'html.parser')
+
+        for text in soup.find_all(text=True):
+            new_content = text
+            for ext in video_extensions:
+                markdown_video_link = f"![attachments/"
+                if markdown_video_link in text:
+                    start_index = text.find(markdown_video_link)
+                    end_index = text.find(")", start_index) + 1
+                    markdown_video_link = text[start_index:end_index]
+
+                    video_path = markdown_video_link.split('(')[-1].strip(')')
+                    full_url = urlunparse((urlparse(self.__base_url).scheme, urlparse(self.__base_url).netloc, f"/wiki/{video_path}", None, None, None))
+                    video_tag = soup.new_tag("video", controls=True)
+                    source_tag = soup.new_tag("source", src=full_url, type="video/mp4")
+                    video_tag.append(source_tag)
+
+                    new_content = new_content.replace(markdown_video_link, str(video_tag))
+
+            text.replace_with(new_content)
+
+        return str(soup)
 
 
 if __name__ == "__main__":
@@ -315,5 +342,5 @@ if __name__ == "__main__":
         dumper.dump()
 
     # Convert HTML files to Markdown
-    converter = Converter(out_dir=args.out_dir, remove_html=args.remove_html)
+    converter = Converter(out_dir=args.out_dir, remove_html=args.remove_html, base_url=args.url)
     converter.convert()
